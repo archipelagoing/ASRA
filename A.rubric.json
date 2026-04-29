@@ -1,0 +1,62 @@
+{
+  "project_evaluation_rubric": {
+    "categories": [
+      {
+        "category": "Game Theory Integration & Mathematical Rigor",
+        "weight_percent": 30,
+        "criteria": "Implements formal game theory concepts such as Nash bargaining, Pareto optimality, equilibrium logic, and mathematically defensible utility structures."
+      },
+      {
+        "category": "Paper Fidelity / Theoretical Inspiration",
+        "weight_percent": 25,
+        "criteria": "Accurately translates concepts from 'Multi-Task Learning as a Bargaining Game' into a new application domain while demonstrating deep understanding."
+      },
+      {
+        "category": "Model Design & Strategic Architecture",
+        "weight_percent": 20,
+        "criteria": "Quality of system architecture including player definitions, disagreement points, feasible allocation constraints, and implementation coherence."
+      },
+      {
+        "category": "Experimental Evaluation & Comparative Analysis",
+        "weight_percent": 15,
+        "criteria": "Effectively compares Nash bargaining against baselines such as equal allocation, greedy allocation, and heuristic approaches while measuring fairness and efficiency."
+      },
+      {
+        "category": "Clarity, Professionalism & Defensibility",
+        "weight_percent": 10,
+        "criteria": "Ability to clearly explain assumptions, defend methodology, justify choices, and present the work professionally."
+      }
+    ],
+    "grade_ranges": [
+      {
+        "range": "90-100",
+        "interpretation": "Excellent formal game theory implementation, highly rigorous, publication-quality project."
+      },
+      {
+        "range": "80-89",
+        "interpretation": "Strong cooperative game theory application with minor theoretical or implementation weaknesses."
+      },
+      {
+        "range": "70-79",
+        "interpretation": "Moderately game theoretic, conceptually solid but still partially heuristic."
+      },
+      {
+        "range": "60-69",
+        "interpretation": "Paper-inspired but mathematically weak or underdeveloped."
+      },
+      {
+        "range": "Below 60",
+        "interpretation": "Superficial use of terminology with poor theoretical legitimacy."
+      }
+    ],
+    "current_project_estimate": {
+      "game_theory_integration": 24,
+      "paper_fidelity": 21,
+      "architecture": 18,
+      "experimental_evaluation": 12,
+      "professionalism": 9,
+      "total_score": 84,
+      "estimated_grade": "A-/B+"
+    }
+  }
+}

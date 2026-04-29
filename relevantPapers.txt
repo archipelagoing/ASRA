@@ -1,0 +1,40 @@
+ASRA-Relevant Papers (Most Recent → Least Recent)
+2025
+
+1. Multi-Agent Reinforcement Learning for Resource Allocation Optimization Survey
+Focus: MARL, adaptive optimization, large-scale resource allocation
+Best Use: Future work, advanced ASRA roadmap, Iteration C+
+
+2022
+
+2. Distributed Resource Allocation over Multiple Interacting Coalitions
+Focus: Coalition games, distributed optimization, constrained Nash systems
+Best Use: Coalition-based scheduling, recursive ASRA scaling
+
+3. Cooperative and Competitive Multi-Agent Systems Survey
+Focus: Modern MAS, cooperative vs competitive strategy, MARL frameworks
+Best Use: Literature review, broad theoretical grounding
+
+*******************************************************************
+4. Multi-Task Learning as a Bargaining Game
+Focus: Nash bargaining, Pareto fairness, cooperative optimization
+Best Use: Primary mathematical foundation for ASRA
+**********************************************************
+
+2016
+
+5. Game Theoretic Control of Multi-Agent Systems
+Focus: Potential games, strategic policy optimization, distributed control
+Best Use: Policy optimization layer, strategic adaptation framework
+
+2005
+
+6. Cooperative Game Theory within Multi-Agent Systems for Systems Scheduling
+Focus: Scheduling, cooperative systems, real-time resource coordination
+Best Use: Scheduling legitimacy, systems engineering precedent
+
+2000
+
+7. Game-Theoretic Formulation of Multi-Agent Resource Allocation
+Focus: Classical resource allocation, computational economics, Nash equilibrium
+Best Use: Historical game theory backbone, foundational legitimacy
