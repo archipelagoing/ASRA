@@ -7,5 +7,7 @@
 			"path": "../../../../Downloads/nash-mtl-main"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "ASRA"
+	}
 }
