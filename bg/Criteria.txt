@@ -1,3 +1,14 @@
-Please upload your final paper reports. Papers should be written conference style in IEEE format, and be around 5 pagers long.
+Please upload your final paper reports. 
+Papers should be written conference style in IEEE format, and be around 5 pagers long.
 
-Papers should have an introduction to position your work with what has been done in the literature - using inline citations when describing previous work, a system model/game model section - that describes the problem and describes in detail the set-up for the games or learning algorithms, a results/simulation section, and conclusions section.
+Papers should have an 
+1. introduction to position your work with what has been done in the literature - using inline citations when describing previous work, 
+2. a system model/game model section - 
+3. that describes the problem and 
+4. describes in detail the set-up for the games or learning algorithms, 
+5. a results/simulation section, and 
+6. conclusions section.
+
+
+
+pseudocode for 
