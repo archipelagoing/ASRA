@@ -76,7 +76,11 @@ def main(
     targets: list = None,
     scale_target: bool = True,
     main_task: int = None,
+    scheduler_kwargs: dict = None,
 ):
+    if scheduler_kwargs is None:
+        scheduler_kwargs = {}
+
     dim = 64
     model = Net(n_tasks=len(targets), num_features=11, dim=dim).to(device)
 
@@ -149,6 +153,7 @@ def main(
                 task_specific_parameters=list(model.task_specific_parameters()),
                 last_shared_parameters=list(model.last_shared_parameters()),
                 representation=features,
+                **scheduler_kwargs,
             )
 
             optimizer.step()

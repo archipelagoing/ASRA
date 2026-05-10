@@ -49,7 +49,10 @@ def calc_loss(x_pred, x_output, task_type):
     return loss
 
 
-def main(path, lr, bs, device):
+def main(path, lr, bs, device, scheduler_kwargs=None):
+    if scheduler_kwargs is None:
+        scheduler_kwargs = {}
+
     # ----
     # Nets
     # ---
@@ -130,6 +133,7 @@ def main(path, lr, bs, device):
                 task_specific_parameters=list(model.task_specific_parameters()),
                 last_shared_parameters=list(model.last_shared_parameters()),
                 representation=features,
+                **scheduler_kwargs,
             )
 
             optimizer.step()

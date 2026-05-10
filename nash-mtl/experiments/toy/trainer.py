@@ -20,7 +20,10 @@ from methods.weight_methods import WeightMethods
 set_logger()
 
 
-def main(method_type, device, n_iter, scale):
+def main(method_type, device, n_iter, scale, scheduler_kwargs=None):
+    if scheduler_kwargs is None:
+        scheduler_kwargs = {}
+
     weight_methods_parameters = extract_weight_method_parameters_from_args(args)
     n_tasks = 2
 
@@ -62,12 +65,19 @@ def main(method_type, device, n_iter, scale):
 
             optimizer.zero_grad()
             f = F(x, False)
+            scheduler_step_kwargs = dict(scheduler_kwargs)
+            if method_type == "replicator_nashmtl":
+                loss_values = f.detach()
+                scheduler_step_kwargs["payoff_matrix"] = torch.diag(
+                    loss_values / loss_values.sum().clamp_min(1e-8)
+                )
             _ = method.backward(
                 losses=f,
                 shared_parameters=(x,),
                 task_specific_parameters=None,
                 last_shared_parameters=None,
                 representation=None,
+                **scheduler_step_kwargs,
             )
             optimizer.step()
 

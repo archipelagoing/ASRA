@@ -9,3 +9,5 @@ scikit-learn
 seaborn
 wandb
 plotly
+cvxpy==1.5.4
+ecos
