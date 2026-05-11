@@ -13,6 +13,7 @@ from experiments.toy.utils import plot_2d_pareto
 from experiments.utils import (
     common_parser,
     extract_weight_method_parameters_from_args,
+    log_scheduler_outputs,
     set_logger,
 )
 from methods.weight_methods import WeightMethods
@@ -60,7 +61,7 @@ def main(method_type, device, n_iter, scale, scheduler_kwargs=None):
             ],
         )
 
-        for _ in tqdm(range(n_iter)):
+        for step_idx in tqdm(range(n_iter)):
             traj.append(x.cpu().detach().numpy().copy())
 
             optimizer.zero_grad()
@@ -71,7 +72,7 @@ def main(method_type, device, n_iter, scale, scheduler_kwargs=None):
                 scheduler_step_kwargs["payoff_matrix"] = torch.diag(
                     loss_values / loss_values.sum().clamp_min(1e-8)
                 )
-            _ = method.backward(
+            _, extra_outputs = method.backward(
                 losses=f,
                 shared_parameters=(x,),
                 task_specific_parameters=None,
@@ -79,6 +80,12 @@ def main(method_type, device, n_iter, scale, scheduler_kwargs=None):
                 representation=None,
                 **scheduler_step_kwargs,
             )
+            if args.log_weights and (step_idx % args.log_weights_every) == 0:
+                log_scheduler_outputs(
+                    extra_outputs,
+                    step=step_idx,
+                    prefix=f"toy init={i}",
+                )
             optimizer.step()
 
         all_traj[i] = dict(init=init.cpu().detach().numpy().copy(), traj=np.array(traj))

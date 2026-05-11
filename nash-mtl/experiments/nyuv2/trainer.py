@@ -15,6 +15,7 @@ from experiments.utils import (
     common_parser,
     extract_weight_method_parameters_from_args,
     get_device,
+    log_scheduler_outputs,
     set_logger,
     set_seed,
     str2bool,
@@ -135,6 +136,12 @@ def main(path, lr, bs, device, scheduler_kwargs=None):
                 representation=features,
                 **scheduler_kwargs,
             )
+            if args.log_weights and (custom_step % args.log_weights_every) == 0:
+                log_scheduler_outputs(
+                    extra_outputs,
+                    step=custom_step,
+                    prefix="nyuv2",
+                )
 
             optimizer.step()
 

@@ -48,6 +48,18 @@ common_parser.add_argument(
 )
 common_parser.add_argument("--gpu", type=int, default=0, help="gpu device ID")
 common_parser.add_argument("--seed", type=int, default=42, help="seed value")
+common_parser.add_argument(
+    "--log-weights",
+    type=str2bool,
+    default=False,
+    help="log replicator, Nash, and final task weights during training",
+)
+common_parser.add_argument(
+    "--log-weights-every",
+    type=int,
+    default=100,
+    help="log weight outputs every x training steps",
+)
 # NashMTL
 common_parser.add_argument(
     "--nashmtl-optim-niter", type=int, default=20, help="number of CCCP iterations"
@@ -57,6 +69,12 @@ common_parser.add_argument(
     type=int,
     default=1,
     help="update task weights every x iterations.",
+)
+common_parser.add_argument(
+    "--replicator-lr",
+    type=float,
+    default=0.01,
+    help="replicator dynamics learning rate for replicator_nashmtl",
 )
 # stl
 common_parser.add_argument(
@@ -112,6 +130,24 @@ def get_device(no_cuda=False, gpus="0"):
     )
 
 
+def log_scheduler_outputs(extra_outputs, step, prefix="train"):
+    if extra_outputs is None:
+        return
+
+    keys = ("replicator_shares", "nash_weights", "final_weights")
+    log_parts = [f"{prefix} step {step}"]
+    for key in keys:
+        value = extra_outputs.get(key)
+        if value is None:
+            continue
+        if isinstance(value, torch.Tensor):
+            value = value.detach().cpu().tolist()
+        log_parts.append(f"{key}={value}")
+
+    if len(log_parts) > 1:
+        logging.info(" | ".join(log_parts))
+
+
 def extract_weight_method_parameters_from_args(args):
     weight_methods_parameters = defaultdict(dict)
     weight_methods_parameters.update(
@@ -119,6 +155,11 @@ def extract_weight_method_parameters_from_args(args):
             nashmtl=dict(
                 update_weights_every=args.update_weights_every,
                 optim_niter=args.nashmtl_optim_niter,
+            ),
+            replicator_nashmtl=dict(
+                update_weights_every=args.update_weights_every,
+                optim_niter=args.nashmtl_optim_niter,
+                replicator_lr=args.replicator_lr,
             ),
             stl=dict(main_task=args.main_task),
             cagrad=dict(c=args.c),
