@@ -121,4 +121,4 @@ This repository is an active research and prototyping workspace. It is best view
 - a working area for EvoNashMTL method design
 - a place to connect theory, implementation, and paper-writing artifacts
 
-It should not yet be treated as a polished benchmark release.
+It should not yet be treated as a polished benchmark release..
