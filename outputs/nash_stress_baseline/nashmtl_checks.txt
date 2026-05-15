@@ -1,0 +1,17 @@
+init=0
+  shares_positive: True
+  shares_normalized: True
+  shares_moved: False
+  no_one_hot_collapse: True
+  final_weights_differ_from_nash: False
+  max_share_deviation: 0.000000
+  max_final_vs_nash_diff: 0.000000
+
+init=1
+  shares_positive: True
+  shares_normalized: True
+  shares_moved: False
+  no_one_hot_collapse: True
+  final_weights_differ_from_nash: False
+  max_share_deviation: 0.000000
+  max_final_vs_nash_diff: 0.000000

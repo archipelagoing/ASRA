@@ -73,8 +73,38 @@ common_parser.add_argument(
 common_parser.add_argument(
     "--replicator-lr",
     type=float,
-    default=0.01,
+    default=0.02,
     help="replicator dynamics learning rate for replicator_nashmtl",
+)
+common_parser.add_argument(
+    "--replicator-update-every",
+    type=int,
+    default=10,
+    help="update the replicator scheduler every x iterations",
+)
+common_parser.add_argument(
+    "--replicator-ema-decay",
+    type=float,
+    default=0.9,
+    help="EMA decay for the replicator scheduler loss statistics",
+)
+common_parser.add_argument(
+    "--replicator-temperature",
+    type=float,
+    default=2.0,
+    help="temperature used to soften replicator scheduler need scores",
+)
+common_parser.add_argument(
+    "--replicator-uniform-mix",
+    type=float,
+    default=0.3,
+    help="mixing factor with uniform shares to prevent replicator collapse",
+)
+common_parser.add_argument(
+    "--replicator-modulation-strength",
+    type=float,
+    default=0.2,
+    help="strength of the replicator modulation applied on top of Nash weights",
 )
 # stl
 common_parser.add_argument(
@@ -160,6 +190,11 @@ def extract_weight_method_parameters_from_args(args):
                 update_weights_every=args.update_weights_every,
                 optim_niter=args.nashmtl_optim_niter,
                 replicator_lr=args.replicator_lr,
+                replicator_update_every=args.replicator_update_every,
+                ema_decay=args.replicator_ema_decay,
+                temperature=args.replicator_temperature,
+                uniform_mix=args.replicator_uniform_mix,
+                modulation_strength=args.replicator_modulation_strength,
             ),
             stl=dict(main_task=args.main_task),
             cagrad=dict(c=args.c),

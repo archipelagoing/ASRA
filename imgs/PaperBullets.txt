@@ -1,0 +1,218 @@
+Method
+
+- Proposed method: replicator-augmented Nash-MTL (`replicator_nashmtl`).
+- Core idea:
+  - retain Nash-MTL as the inner per-step task-weighting mechanism
+  - add a slower outer replicator scheduler that adjusts task influence over time
+  - use the replicator to modulate Nash rather than replace it
+- Inner weighting mechanism:
+  - Nash weights are computed at every optimization step
+  - these weights represent the bargaining-based multi-task compromise at the current step
+- Outer scheduler mechanism:
+  - replicator shares are updated every `k` steps instead of every step
+  - the scheduler uses EMA-smoothed task signals rather than raw instantaneous losses
+  - the preferred signal is `qm9_proxy`, which blends:
+    - current relative task loss
+    - smoothed under-improvement
+    - relative task underperformance
+- Final weighting rule:
+  - `nash_weights` provide the base task weighting
+  - `replicator_shares` provide a slower adaptive reallocation signal
+  - `final_weights` are produced by modulating the Nash solution using the replicator state
+- Intended effect:
+  - preserve Nash-MTL fairness/conflict handling at the step level
+  - add slower adaptive emphasis for tasks that fall behind over training
+- Final tuned toy settings:
+  - `--scheduler-signal qm9_proxy`
+  - `--debug-init-preset representative`
+  - `--replicator-update-every 1`
+  - `--replicator-lr 0.05`
+  - `--replicator-uniform-mix 0.05`
+  - `--replicator-modulation-strength 0.3`
+  - `--toy-payoff-temperature 0.1`
+  - `--toy-payoff-gain 5.0`
+  - `--n-epochs 220`
+
+Experimental Design
+
+- Primary validation strategy:
+  - first validate mechanism and stability on the toy setup
+  - then attempt a small real-data confidence pass on QM9
+- Toy experiment goals:
+  - verify that the outer scheduler is active
+  - confirm that it changes task weighting relative to plain Nash-MTL
+  - confirm that the repaired design avoids the old collapse mode
+- Toy baseline:
+  - plain `nashmtl`
+- Toy proposed method:
+  - `replicator_nashmtl`
+- Representative toy cases:
+  - `init=0`: strongest nontrivial mechanism case
+  - `init=1`: hard stability case, previously collapse-prone
+- Stability checks recorded automatically:
+  - `shares_positive`
+  - `shares_normalized`
+  - `shares_moved`
+  - `no_one_hot_collapse`
+  - `final_weights_differ_from_nash`
+  - `max_share_deviation`
+  - `max_final_vs_nash_diff`
+  - `max_relative_loss_gap`
+- Phase 2 tuning design:
+  - one-knob-at-a-time sweep
+  - tune `replicator_update_every` first
+  - tune `replicator_lr` second
+  - tune `replicator_modulation_strength` third
+- Phase 3 confidence design:
+  - run toy baseline and toy replicator for 3 seeds
+  - inspect trajectories, scheduler plots, and checks
+  - confirm that collapse is avoided consistently
+- Phase 4 ablation design:
+  - main ablation: fast vs slow replicator
+    - `replicator_update_every=1`
+    - `replicator_update_every=10`
+  - optional signal ablation:
+    - `qm9_proxy`
+    - `loss_gap`
+  - collapse-vs-stable comparison:
+    - old stress configuration on `init=1`
+    - repaired stable configuration on `init=1`
+- Non-toy design:
+  - QM9 used as the primary benchmark attempt
+  - one-seed, short/smoke configuration for:
+    - `nashmtl`
+    - `replicator_nashmtl`
+  - objective: verify that both benchmark paths launch and behave sensibly before scaling up
+
+Results / Figures
+
+- Toy baseline result:
+  - Fig. 1: `fig1_toy_baseline_nashmtl.png`
+  - Caption reference:
+    - “Toy baseline trajectory under plain Nash-MTL. This is the stable reference behavior with no outer replicator scheduler.”
+  - Interpretation:
+    - provides the non-adaptive baseline
+    - serves as the control behavior for all toy comparisons
+
+- Toy replicator result:
+  - Fig. 2: `fig2_toy_replicator_trajectory.png`
+  - Caption reference:
+    - “Toy trajectory under the tuned replicator-augmented Nash-MTL setup. This figure shows that the outer scheduler changes optimization behavior relative to the plain Nash baseline.”
+  - Interpretation:
+    - confirms that the proposed method does not merely run
+    - confirms that the optimization path changes relative to baseline
+
+- Weight-evolution / mechanism result:
+  - Fig. 3: `fig3_toy_weight_evolution.png`
+  - Caption reference:
+    - “Scheduler dynamics for the representative toy case (`init=0`). Replicator shares move over time, Nash weights remain the inner bargaining solution, and the final weights show the actual rebalanced optimization signal.”
+  - Interpretation:
+    - this is the main mechanism figure
+    - it separates:
+      - `replicator_shares`
+      - `nash_weights`
+      - `final_weights`
+    - it shows that the outer scheduler remains active and stable
+
+- Old collapse result:
+  - Fig. 4: `fig4_toy_old_collapse.png`
+  - Caption reference:
+    - “Old stress-test behavior on the hard `init=1` case. This figure captures the previous collapse mode where the scheduler became too aggressive and effectively pushed toward one-hot behavior.”
+  - Interpretation:
+    - provides concrete evidence of the original failure mode
+    - shows that the instability problem was real, not hypothetical
+
+- Stabilized replacement result:
+  - Fig. 5: `fig5_toy_new_stable.png`
+  - Caption reference:
+    - “Stabilized behavior on the same hard `init=1` case. This figure shows that the repaired scheduler remains normalized and adaptive without collapsing.”
+  - Interpretation:
+    - shows that the repaired design avoids one-hot collapse on the same hard case
+    - supports the stability claim directly
+
+- Seed-consistency result:
+  - 3-seed toy confidence runs showed effectively identical behavior under the tuned toy setup
+  - baseline remained flat across seeds
+  - replicator remained stable and adaptive across seeds
+  - representative case (`init=0`) consistently showed scheduler movement
+  - hard case (`init=1`) remained controlled rather than collapsing
+
+- Ablation result:
+  - fast vs slow replicator:
+    - `update_every=1` produced stronger visible adaptive effect
+    - `update_every=10` was flatter/more sluggish
+    - both stayed stable
+  - optional signal ablation:
+    - `qm9_proxy` vs `loss_gap` was effectively identical under the final fixed representative setup
+    - this makes the speed/stability ablation more compelling than the signal ablation in the current configuration
+
+- Non-toy result status:
+  - QM9 runs for both `nashmtl` and `replicator_nashmtl` were launched successfully
+  - benchmark setup appears partially alive
+  - no clean benchmark comparison figure was obtained within the bounded smoke-test window
+
+Discussion
+
+- The main contribution currently supported by the evidence is not benchmark superiority.
+- The strongest confirmed contribution is a more stable and interpretable adaptive extension of Nash-MTL.
+- The toy evidence supports three main claims:
+  - plain Nash-MTL is a stable non-adaptive reference
+  - replicator-NashMTL changes task weighting in a real and controlled way
+  - the original collapse mode on the hard toy case has been repaired
+- The weight-evolution figure is especially important because it shows that:
+  - the outer scheduler is active
+  - Nash still provides the inner bargaining structure
+  - the replicator modulates rather than dominates the final weighting
+- The fast-vs-slow ablation helps justify the scheduler design:
+  - the update frequency materially affects responsiveness
+  - this makes the outer scheduler behavior more interpretable
+- The 3-seed toy pass increases confidence that the tuned toy setup is not a one-off artifact
+- The optional signal ablation was less informative than expected because the final representative setup produced effectively identical outcomes for `qm9_proxy` and `loss_gap`
+- This suggests:
+  - the signal design may matter more in harsher or broader regimes
+  - under the final fixed representative configuration, the dominant story is scheduler stability and responsiveness rather than signal-type separation
+
+Limitations
+
+- The strongest figures are still toy figures.
+- The current evidence does not prove real benchmark superiority on QM9 or NYUv2.
+- The toy setup validates mechanism and stability better than end-task performance.
+- The non-toy QM9 path was launched and appears to enter training, but it did not yield a clean finished comparison figure within the bounded evaluation window.
+- The optional `qm9_proxy` vs `loss_gap` ablation did not produce a strong separation under the final fixed representative setup.
+- Because of this, the most defensible current claim is:
+  - stability improved
+  - adaptive behavior is now controlled and interpretable
+  - benchmark-level performance improvement remains unconfirmed
+
+Conclusion
+
+- A replicator-augmented extension of Nash-MTL was developed and validated on a toy multi-objective setup.
+- The final design keeps Nash-MTL as the per-step bargaining mechanism while adding a slower outer scheduler driven by EMA-smoothed task signals.
+- The repaired design avoids the earlier collapse mode on the hard toy case and remains stable across seeds in the tuned toy harness.
+- The toy evidence supports the method as a mechanism/stability improvement over the earlier replicator design, with the clearest confirmed gains in stability and controlled adaptive behavior.
+- Real-data benchmark performance remains an open question because a clean completed non-toy comparison has not yet been obtained.
+
+References
+
+- Nash-MTL:
+  - reference the original Nash-MTL paper used as the inner weighting method
+- CAGrad toy setup:
+  - reference the CAGrad source/paper because the toy example is a modification of that setup
+- Replicator dynamics / evolutionary game dynamics:
+  - cite a standard source if the paper frames the outer scheduler in evolutionary terms
+- CVXPY / optimization tooling:
+  - only include if the paper or appendix discusses implementation details of the Nash solve
+- Benchmark references:
+  - QM9 paper/dataset citation
+  - NYUv2 citation if mentioned in the paper, even if benchmark evidence is incomplete
+
+Suggested citation responsibilities in the paper:
+
+- Method section:
+  - Nash-MTL
+  - any evolutionary/replicator dynamics reference
+- Experimental design section:
+  - CAGrad toy origin
+  - QM9 benchmark citation
+- Discussion / limitations:
+  - no extra citations needed unless making broader literature claims

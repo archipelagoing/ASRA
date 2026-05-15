@@ -1,0 +1,361 @@
+Final Notes on Replicator-NashMTL Toy Design, Settings, and Current Evidence
+
+Overview
+
+- This note is meant to be the most detailed high-signal description of the current algorithm design and toy validation state.
+- It focuses on what was actually built and verified in the toy harness.
+- It is intentionally more complete than a paper-ready summary and is meant to preserve design rationale before later compression.
+
+Core Goal of the Design
+
+- The purpose of the modified method is not to replace Nash-MTL.
+- The purpose is to augment Nash-MTL with a slower outer scheduler that can adjust long-run task emphasis over training.
+- The inner Nash update is meant to preserve step-level multi-task bargaining behavior.
+- The outer replicator layer is meant to respond to training dynamics over time:
+  - which tasks are under-improving
+  - which tasks are underperforming relative to others
+  - which tasks may need more long-run support
+
+High-Level Structure of the Algorithm
+
+- The method can be understood as a two-level weighting system.
+
+- Inner level:
+  - Nash-MTL computes task weights every optimization step.
+  - These weights come from the bargaining-based optimization already present in the repository.
+  - This component produces the raw `nash_weights`.
+
+- Outer level:
+  - A replicator-style scheduler maintains task shares over time.
+  - This component updates more slowly than the Nash step.
+  - It is not intended to fully override Nash.
+  - Instead, it provides a slower-moving notion of which tasks deserve relatively more or less influence.
+
+- Final combination:
+  - The final optimization weights are obtained by modulating the Nash weights with the replicator shares.
+  - This produces `final_weights`.
+  - So the effective training signal is:
+    - Nash determines the local bargaining solution
+    - replicator nudges that solution over time
+
+Intended Behavioral Story
+
+- Nash-MTL should continue to handle per-step conflict balancing.
+- The replicator scheduler should capture slower task-level trends.
+- The outer scheduler should not collapse to one task under ordinary settings.
+- The final weights should differ from plain Nash when the scheduler is meaningfully active.
+- The method should ideally produce:
+  - smoother adaptation than direct raw-loss heuristics
+  - more interpretable long-run task allocation
+  - stability without one-hot degeneration
+
+Why the Original Toy Setup Was Not Enough
+
+- Originally, the toy trainer did not pass an explicit scheduler signal into `replicator_nashmtl`.
+- That meant the method fell back to a nearly symmetric default behavior.
+- In practice, this caused:
+  - `replicator_shares` to stay effectively uniform
+  - the outer scheduler to look inactive
+  - the toy result to reflect mostly Nash behavior rather than the new design
+
+- As a result, the toy experiment was not a meaningful validation of the outer scheduler.
+
+What Was Changed in the Toy Harness
+
+- The toy trainer was turned into a scheduler-validation harness rather than just a Pareto-front demo.
+
+- Main changes:
+  - explicit `payoff_matrix` construction at every step
+  - trainer-side EMA tracking for task losses
+  - multiple scheduler-signal modes
+  - saved histories and scheduler plots
+  - automatic checks for movement, normalization, and collapse
+  - baseline comparison mode
+  - representative debug initialization preset
+
+Scheduler Signal Design
+
+- The toy trainer now supports multiple scheduler signal modes:
+  - `none`
+  - `loss_ratio`
+  - `loss_gap`
+  - `improvement`
+  - `qm9_proxy`
+
+- The final preferred mode is `qm9_proxy`.
+
+Why `qm9_proxy` was introduced
+
+- The toy setup is not supposed to remain a purely geometric toy.
+- The goal was to make the toy-side scheduler input resemble the kind of statistics available in a real training loop like QM9.
+- The toy harness now mimics experiment-side quantities such as:
+  - current per-task relative loss
+  - smoothed loss improvement over time
+  - relative task underperformance
+
+- This makes the toy experiment more useful as a proxy for real adaptive weighting behavior.
+
+Detailed Interpretation of `qm9_proxy`
+
+- The `qm9_proxy` signal is a blended signal, not a single raw statistic.
+
+- It combines:
+  - current task underperformance
+  - EMA-smoothed under-improvement
+  - relative task imbalance
+
+- Conceptually:
+  - if a task is performing worse than the others, it should receive more attention
+  - if a task is improving more slowly than the others, it should receive more attention
+  - if both effects agree, the scheduler should move more strongly
+
+- The signal is intentionally smoother than direct raw-loss control.
+
+Why EMA-Smoothed Improvement Was Important
+
+- Raw instantaneous losses were too noisy and too sensitive to scale.
+- Relative improvement over time better matches the intended evolutionary scheduling story.
+- EMA smoothing helps by:
+  - reducing step-to-step volatility
+  - making the scheduler less reactive to transient fluctuations
+  - giving a more stable notion of under-improvement
+
+- A key stability fix was using the absolute EMA magnitude as a normalization denominator and clamping the improvement signal.
+- This avoided exploding ratios when losses were negative or near zero.
+
+Why the Replicator Should Modulate Nash Instead of Dominating It
+
+- A key design choice is that the replicator shares should not directly replace the Nash weights.
+- If they dominated the weighting rule, the method would stop resembling Nash-MTL and would instead become a different scheduler entirely.
+- The current design preserves the intended hierarchy:
+  - Nash provides the base bargaining solution
+  - replicator alters the relative emphasis without discarding the Nash structure
+
+- This is important both algorithmically and narratively:
+  - algorithmically, it constrains the outer scheduler
+  - narratively, it supports the claim that the method is an augmentation of Nash-MTL rather than a full replacement
+
+Observable Quantities in the Saved Scheduler Plots
+
+- The saved scheduler figure shows three levels of behavior:
+
+- `replicator_shares`
+  - the outer scheduler state
+  - indicates which tasks are being emphasized over the long run
+
+- `nash_weights`
+  - the raw bargaining solution before outer modulation
+  - useful for seeing what plain Nash would prefer
+
+- `final_weights`
+  - the actual optimization weights after combining Nash and replicator effects
+  - these are the most important weights for real optimization behavior
+
+- This separation is important because it lets us see:
+  - whether the outer scheduler is moving
+  - whether it is fighting or reinforcing Nash
+  - whether the final result is meaningfully different from plain Nash
+
+Representative Toy Cases
+
+- `init=0`
+  - this is the strongest nontrivial representative case
+  - it consistently shows visible scheduler motion
+  - this is the main mechanism-validation case
+
+- `init=1`
+  - this is the hard symmetric-origin case
+  - earlier versions of the scheduler could collapse here
+  - the stabilized design keeps it controlled
+  - this is the main stability-validation case
+
+- `init=2`, `init=3`, `init=4`
+  - these remained stable but were generally less dramatic
+  - they were more useful for checking control than for showcasing adaptation
+
+Old Failure Mode
+
+- An earlier stress-test configuration caused a collapse on `init=1`.
+- In that regime:
+  - the scheduler became too aggressive
+  - `replicator_shares` moved toward effectively one-hot behavior
+  - the outer scheduler stopped being a controlled modulator and became a pathological selector
+
+- This failure mode mattered because it revealed:
+  - the basic mechanism could move
+  - but it could also become unstable under poorly normalized or overly aggressive settings
+
+How the Collapse Was Fixed
+
+- The collapse was addressed by a combination of signal and hyperparameter fixes.
+
+- Signal-level fixes:
+  - stable normalization of improvement
+  - denominator based on absolute EMA magnitude
+  - improvement clipping
+  - more controlled payoff shaping
+
+- Hyperparameter-level fixes:
+  - gentler replicator learning rate
+  - nonzero uniform mixing
+  - moderated modulation strength
+  - better update frequency choice
+
+- The result is that the hard case is now adaptive but controlled rather than collapsing.
+
+Final Toy Hyperparameters
+
+- Final chosen toy default:
+  - `--scheduler-signal qm9_proxy`
+  - `--debug-init-preset representative`
+  - `--replicator-update-every 1`
+  - `--replicator-lr 0.05`
+  - `--replicator-uniform-mix 0.05`
+  - `--replicator-modulation-strength 0.3`
+  - `--toy-payoff-temperature 0.1`
+  - `--toy-payoff-gain 5.0`
+  - `--n-epochs 220`
+
+Why These Hyperparameters Were Chosen
+
+- `replicator_update_every = 1`
+  - among the tested values `1`, `5`, and `10`, this gave the clearest adaptive response
+  - `10` was noticeably flatter
+  - `5` was intermediate
+
+- `replicator_lr = 0.05`
+  - among the tested values `0.02`, `0.05`, and `0.1`
+  - `0.02` was too mild
+  - `0.1` was more aggressive than necessary
+  - `0.05` was the best middle ground
+
+- `replicator_modulation_strength = 0.3`
+  - among the tested values `0.1`, `0.3`, and `0.5`
+  - `0.1` was too weak
+  - `0.5` gave stronger visible effects but was more aggressive than needed for the default
+  - `0.3` was the best conservative final choice
+
+- `replicator_uniform_mix = 0.05`
+  - prevents the shares from becoming overly brittle
+  - still allows visible movement
+
+- `toy_payoff_temperature = 0.1`
+  - keeps the scheduler responsive without being hypersensitive
+
+- `toy_payoff_gain = 5.0`
+  - produces a visible signal without returning to the old stress-test instability
+
+What Was Verified Empirically on the Toy Setup
+
+- Baseline-vs-replicator comparison:
+  - plain Nash-MTL remained flat and non-adaptive
+  - replicator-NashMTL produced a controlled change in behavior
+
+- Mechanism validation:
+  - the outer scheduler clearly moves on the representative case
+  - the final weights differ from normalized Nash on that case
+
+- Stability validation:
+  - the old `init=1` collapse can be shown explicitly
+  - the repaired `init=1` behavior remains controlled and non-one-hot
+
+- 3-seed confidence pass:
+  - the toy behavior is consistent across seeds in the current setup
+  - the method appears stable in the toy harness
+
+Phase 4 Ablation Results
+
+- Fast vs slow replicator:
+  - `replicator_update_every=1` vs `10`
+  - both were stable
+  - `1` produced a stronger visible adaptive effect
+  - `10` was more sluggish/flatter
+
+- Collapse vs stable comparison:
+  - old stress-test `init=1` collapsed
+  - new stabilized `init=1` remained normalized and controlled
+
+- Optional signal ablation:
+  - `qm9_proxy` vs `loss_gap`
+  - under the current fixed representative setup, these were effectively identical
+  - this means the signal-ablation story is weaker than the speed/stability story under the current chosen defaults
+
+How to Interpret the Current Toy Evidence
+
+- The toy evidence is strong for:
+  - mechanism validation
+  - stability validation
+  - showing that the scheduler is active
+  - showing that collapse can be avoided
+
+- The toy evidence is not strong for:
+  - proving benchmark superiority
+  - proving real-data generalization
+  - proving that replicator-NashMTL is universally better than Nash-MTL
+
+- In other words:
+  - the toy story is a method-and-stability story
+  - not a final empirical performance story
+
+Paper-Friendly Figure Set
+
+- `fig1_toy_baseline_nashmtl.png`
+  - plain Nash-MTL toy baseline
+
+- `fig2_toy_replicator_trajectory.png`
+  - tuned replicator trajectory
+
+- `fig3_toy_weight_evolution.png`
+  - best mechanism figure
+  - shows replicator shares, Nash weights, and final weights
+
+- `fig4_toy_old_collapse.png`
+  - old hard-case collapse figure
+
+- `fig5_toy_new_stable.png`
+  - repaired hard-case stable figure
+
+Best Claims Supported by These Figures
+
+- Plain Nash-MTL is a stable non-adaptive reference.
+- Replicator-NashMTL changes weighting behavior in a real and interpretable way.
+- The old collapse problem on the hard toy case was real.
+- The repaired version avoids that collapse while preserving adaptive behavior.
+
+Claims Not Yet Supported
+
+- That replicator-NashMTL improves benchmark performance on QM9.
+- That replicator-NashMTL improves benchmark performance on NYUv2.
+- That the new method is empirically superior on real data rather than mainly more stable and more interpretable.
+
+Non-Toy Status
+
+- QM9 was launched and appears to enter training for both:
+  - `nashmtl`
+  - `replicator_nashmtl`
+
+- However, the bounded smoke-test attempts did not produce clean, timely benchmark comparison outputs.
+- So the non-toy path is best described as:
+  - partially alive
+  - not yet giving a clean benchmark figure
+
+Current Best Short Summary
+
+- Nash weights are still computed every step.
+- The outer replicator scheduler updates every `k` steps using EMA-smoothed improvement and underperformance signals.
+- The replicator modulates the Nash solution rather than replacing it.
+- The repaired toy design is substantially more stable than the earlier aggressive version.
+- The strongest confirmed improvement so far is stability and controlled adaptive weighting behavior, not benchmark-level empirical superiority.
+
+Current Status Checklist
+
+- Toy baseline figure exists
+- Toy replicator figure exists
+- Weight-evolution figure exists
+- Collapse-vs-stable figure pair exists
+- Final toy hyperparameter setting is chosen
+- One ablation is completed
+- Method/settings are documented
+- 3-seed toy stability pass is completed
+- Non-toy benchmark comparison has been attempted
+- A clean finished non-toy comparison figure is still missing

@@ -48,6 +48,7 @@ def test_replicator_nashmtl_smoke_returns_final_weights():
         update_weights_every=1,
         optim_niter=1,
         replicator_lr=0.5,
+        replicator_update_every=1,
     )
     shared_parameter = _make_shared_parameter()
 
@@ -67,16 +68,18 @@ def test_replicator_nashmtl_falls_back_to_identity_payoff():
         update_weights_every=1,
         optim_niter=1,
         replicator_lr=0.5,
+        replicator_update_every=1,
     )
     shared_parameter = _make_shared_parameter()
 
     _, extra_outputs = _run_backward(method, shared_parameter)
 
-    expected_payoff = torch.eye(2, dtype=torch.float32)
+    expected_payoff = torch.diag(torch.full((2,), 0.5, dtype=torch.float32))
     assert torch.allclose(extra_outputs["payoff_matrix"], expected_payoff)
     assert torch.allclose(
         extra_outputs["replicator_shares"],
         torch.full((2,), 0.5, dtype=torch.float32),
+        atol=1e-6,
     )
 
 
@@ -88,6 +91,8 @@ def test_replicator_nashmtl_direct_payoff_updates_replicator_shares():
         update_weights_every=1,
         optim_niter=1,
         replicator_lr=0.5,
+        replicator_update_every=1,
+        uniform_mix=0.0,
     )
     shared_parameter = _make_shared_parameter()
     payoff_matrix = torch.tensor([[2.0, 0.0], [0.0, 1.0]], dtype=torch.float32)
@@ -109,3 +114,43 @@ def test_replicator_nashmtl_direct_payoff_updates_replicator_shares():
     assert torch.allclose(first_outputs["payoff_matrix"], payoff_matrix)
     assert not torch.allclose(first_shares, torch.full((2,), 0.5, dtype=torch.float32))
     assert not torch.allclose(second_shares, first_shares)
+
+
+def test_replicator_nashmtl_delays_scheduler_updates():
+    method = WeightMethods(
+        method="replicator_nashmtl",
+        n_tasks=2,
+        device=torch.device("cpu"),
+        update_weights_every=1,
+        optim_niter=1,
+        replicator_lr=0.5,
+        replicator_update_every=3,
+        uniform_mix=0.0,
+    )
+    shared_parameter = _make_shared_parameter()
+    payoff_matrix = torch.tensor([[2.0, 0.0], [0.0, 1.0]], dtype=torch.float32)
+
+    _, first_outputs = _run_backward(
+        method,
+        shared_parameter,
+        payoff_matrix=payoff_matrix,
+    )
+    _, second_outputs = _run_backward(
+        method,
+        shared_parameter,
+        payoff_matrix=payoff_matrix,
+    )
+    _, third_outputs = _run_backward(
+        method,
+        shared_parameter,
+        payoff_matrix=payoff_matrix,
+    )
+
+    assert torch.allclose(
+        first_outputs["replicator_shares"],
+        second_outputs["replicator_shares"],
+    )
+    assert torch.allclose(
+        second_outputs["replicator_shares"],
+        third_outputs["replicator_shares"],
+    )

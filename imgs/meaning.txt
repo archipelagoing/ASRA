@@ -1,0 +1,37 @@
+These are the 5 most relevant figures from the toy work so far.
+
+1. `fig1_toy_baseline_nashmtl.png`
+This is the plain Nash-MTL reference. It matters because every other toy result should be understood relative to this baseline.
+
+2. `fig2_toy_replicator_trajectory.png`
+This is the tuned replicator version of the same toy setup. It matters because it shows that the new method is not just running; it actually changes the optimization path.
+
+3. `fig3_toy_weight_evolution.png`
+This is the best “mechanism” figure. It shows the three levels of the method:
+- replicator shares
+- Nash weights
+- final weights
+This is the cleanest proof that the outer scheduler is active and stable on the representative case.
+
+4. `fig4_toy_old_collapse.png`
+This is the old failure mode. It is important because it gives you a concrete before-state instead of only claiming that the method was unstable.
+
+5. `fig5_toy_new_stable.png`
+This is the repaired after-state on the same hard case. It matters because it shows the old collapse mode has actually been replaced by stable behavior, not just hidden.
+
+Taken together, these figures support three claims:
+
+- plain Nash-MTL is the stable but non-adaptive reference behavior
+- replicator-Nash-MTL now changes weighting behavior in a controlled and interpretable way
+- the old collapse problem on the hard toy case was real, and the repaired version avoids it
+
+What these figures do NOT prove:
+
+- they do not prove benchmark superiority on QM9 or NYUv2
+- they do not prove that replicator-Nash-MTL is empirically better on real data
+
+What they ARE good for:
+
+- method/mechanism validation
+- stability story
+- toy ablation and debugging evidence

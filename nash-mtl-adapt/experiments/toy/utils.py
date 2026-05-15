@@ -1,4 +1,5 @@
 import matplotlib
+matplotlib.use("Agg")
 import numpy as np
 import seaborn as sns
 import torch
@@ -53,9 +54,9 @@ def plot_2d_pareto(trajectories: dict, scale):
     ax.yaxis.set_label_coords(-0.01, 1.01)
 
     for tick in ax.xaxis.get_major_ticks():
-        tick.label.set_fontsize(20)
+        tick.label1.set_fontsize(20)
     for tick in ax.yaxis.get_major_ticks():
-        tick.label.set_fontsize(20)
+        tick.label1.set_fontsize(20)
 
     plt.tight_layout()
 
@@ -64,3 +65,54 @@ def plot_2d_pareto(trajectories: dict, scale):
     )
 
     return ax, fig, legend
+
+
+def plot_scheduler_history(history: dict, out_file):
+    fig, axes = plt.subplots(3, 1, figsize=(9, 10), sharex=True)
+    steps = history["steps"]
+
+    replicator_shares = history.get("replicator_shares")
+    nash_weights = history.get("nash_weights")
+    final_weights = history.get("final_weights")
+
+    if replicator_shares is not None:
+        for task_idx in range(replicator_shares.shape[1]):
+            axes[0].plot(
+                steps,
+                replicator_shares[:, task_idx],
+                label=f"task_{task_idx}",
+                linewidth=2,
+            )
+    axes[0].set_ylabel("Replicator")
+    axes[0].set_title("Replicator Shares")
+    axes[0].legend(frameon=False)
+
+    if nash_weights is not None:
+        for task_idx in range(nash_weights.shape[1]):
+            axes[1].plot(
+                steps,
+                nash_weights[:, task_idx],
+                label=f"task_{task_idx}",
+                linewidth=2,
+            )
+    axes[1].set_ylabel("Nash")
+    axes[1].set_title("Nash Weights")
+
+    if final_weights is not None:
+        for task_idx in range(final_weights.shape[1]):
+            axes[2].plot(
+                steps,
+                final_weights[:, task_idx],
+                label=f"task_{task_idx}",
+                linewidth=2,
+            )
+    axes[2].set_ylabel("Final")
+    axes[2].set_xlabel("Step")
+    axes[2].set_title("Final Weights")
+
+    for ax in axes:
+        sns.despine(ax=ax)
+
+    plt.tight_layout()
+    plt.savefig(out_file, bbox_inches="tight", facecolor="white")
+    plt.close(fig)

@@ -1,0 +1,14 @@
+fig1_toy_baseline_nashmtl.png
+Toy baseline trajectory under plain Nash-MTL. This is the stable reference behavior with no outer replicator scheduler.
+
+fig2_toy_replicator_trajectory.png
+Toy trajectory under the tuned replicator-augmented Nash-MTL setup. This figure shows that the outer scheduler changes optimization behavior relative to the plain Nash baseline.
+
+fig3_toy_weight_evolution.png
+Scheduler dynamics for the representative toy case (`init=0`). Replicator shares move over time, Nash weights remain the inner bargaining solution, and the final weights show the actual rebalanced optimization signal.
+
+fig4_toy_old_collapse.png
+Old stress-test behavior on the hard `init=1` case. This figure captures the previous collapse mode where the scheduler became too aggressive and effectively pushed toward one-hot behavior.
+
+fig5_toy_new_stable.png
+Stabilized behavior on the same hard `init=1` case. This figure shows that the repaired scheduler remains normalized and adaptive without collapsing.

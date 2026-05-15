@@ -822,7 +822,12 @@ class ReplicatorNashMTL(WeightMethod):
         max_norm: float = 1.0,
         update_weights_every: int = 1,
         optim_niter: int = 20,
-        replicator_lr: float = 0.1,
+        replicator_lr: float = 0.02,
+        replicator_update_every: int = 10,
+        ema_decay: float = 0.9,
+        temperature: float = 2.0,
+        uniform_mix: float = 0.3,
+        modulation_strength: float = 0.2,
         eps: float = 1e-8,
         alpha_init=None,
         alpha_payoff_init=None,
@@ -834,13 +839,19 @@ class ReplicatorNashMTL(WeightMethod):
         self.update_weights_every = update_weights_every
         self.max_norm = max_norm
         self.replicator_lr = replicator_lr
+        self.replicator_update_every = max(1, replicator_update_every)
+        self.ema_decay = ema_decay
+        self.temperature = temperature
+        self.uniform_mix = uniform_mix
+        self.modulation_strength = modulation_strength
         self.eps = eps
 
         # Nash-MTL state
         self.prvs_alpha_param = None
         self.normalization_factor = np.ones((1,))
         self.init_gtg = np.eye(self.n_tasks)
-        self.step = 0.0
+        self.step = 0
+        self.replicator_step = 0
         self.prvs_alpha = (
             np.array(alpha_init, dtype=np.float32)
             if alpha_init is not None
@@ -853,8 +864,27 @@ class ReplicatorNashMTL(WeightMethod):
         elif not isinstance(x_init, torch.Tensor):
             x_init = torch.tensor(x_init, dtype=torch.float32, device=device)
         self.x = (x_init / x_init.sum()).to(device)
+        self.uniform_shares = torch.full(
+            (self.n_tasks,),
+            1.0 / self.n_tasks,
+            dtype=torch.float32,
+            device=device,
+        )
+        self.loss_ema = None
+        self.prev_loss_ema = None
 
         self.alpha_payoff = alpha_payoff_init
+
+    def _update_loss_ema(self, losses):
+        loss_values = losses.detach().to(self.device)
+        if self.loss_ema is None:
+            self.loss_ema = loss_values.clone()
+            self.prev_loss_ema = loss_values.clone()
+        else:
+            self.prev_loss_ema = self.loss_ema.clone()
+            self.loss_ema = (
+                self.ema_decay * self.loss_ema + (1.0 - self.ema_decay) * loss_values
+            )
 
     def _build_payoff_matrix(self, scheduler_features=None, payoff_matrix=None):
         if payoff_matrix is not None:
@@ -892,7 +922,15 @@ class ReplicatorNashMTL(WeightMethod):
                 dims=([2], [0]),
             )
 
-        return torch.eye(self.n_tasks, dtype=torch.float32, device=self.device)
+        if self.loss_ema is None or self.prev_loss_ema is None:
+            return torch.eye(self.n_tasks, dtype=torch.float32, device=self.device)
+
+        improvement = (self.prev_loss_ema - self.loss_ema) / self.prev_loss_ema.clamp_min(
+            self.eps
+        )
+        need = torch.clamp(improvement.mean() - improvement, min=0.0)
+        scores = torch.softmax(need / max(self.temperature, self.eps), dim=0)
+        return torch.diag(scores)
 
     def _update_replicator_shares(self, payoff_matrix):
         p = payoff_matrix @ self.x
@@ -902,6 +940,8 @@ class ReplicatorNashMTL(WeightMethod):
 
         x_next = self.x * growth
         x_next = torch.clamp(x_next, min=self.eps)
+        x_next = x_next / x_next.sum().clamp_min(self.eps)
+        x_next = (1.0 - self.uniform_mix) * x_next + self.uniform_mix * self.uniform_shares
         x_next = x_next / x_next.sum().clamp_min(self.eps)
 
         self.x = x_next.detach()
@@ -989,11 +1029,19 @@ class ReplicatorNashMTL(WeightMethod):
         if self.step == 0:
             self._init_optim_problem()
 
+        self._update_loss_ema(losses)
+        should_update_replicator = (
+            self.replicator_step % self.replicator_update_every
+        ) == 0
         payoff_matrix_t = self._build_payoff_matrix(
             scheduler_features=scheduler_features,
             payoff_matrix=payoff_matrix,
         )
-        replicator_shares = self._update_replicator_shares(payoff_matrix_t)
+        if should_update_replicator:
+            replicator_shares = self._update_replicator_shares(payoff_matrix_t)
+        else:
+            replicator_shares = self.x.detach()
+        self.replicator_step += 1
 
         if (self.step % self.update_weights_every) == 0:
             self.step += 1
@@ -1023,7 +1071,10 @@ class ReplicatorNashMTL(WeightMethod):
             self.step += 1
             nash_weights = torch.from_numpy(self.prvs_alpha).to(losses.device)
 
-        final_weights = replicator_shares.to(losses.device) * nash_weights
+        centered_shares = replicator_shares.to(losses.device) - replicator_shares.mean()
+        modulator = 1.0 + self.modulation_strength * centered_shares
+        modulator = torch.clamp(modulator, min=self.eps)
+        final_weights = nash_weights * modulator
         final_weights = final_weights / final_weights.sum().clamp_min(self.eps)
         final_weights = final_weights * self.n_tasks
 
@@ -1031,6 +1082,7 @@ class ReplicatorNashMTL(WeightMethod):
 
         extra_outputs["replicator_shares"] = replicator_shares.detach()
         extra_outputs["payoff_matrix"] = payoff_matrix_t.detach()
+        extra_outputs["loss_ema"] = None if self.loss_ema is None else self.loss_ema.detach()
         extra_outputs["nash_weights"] = nash_weights.detach()
         extra_outputs["weights"] = final_weights.detach()
         extra_outputs["final_weights"] = final_weights.detach()
