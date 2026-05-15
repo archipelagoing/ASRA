@@ -52,10 +52,7 @@ def plot_2d_pareto(trajectories: dict, scale):
     ax.xaxis.set_label_coords(1.015, -0.03)
     ax.yaxis.set_label_coords(-0.01, 1.01)
 
-    for tick in ax.xaxis.get_major_ticks():
-        tick.label.set_fontsize(20)
-    for tick in ax.yaxis.get_major_ticks():
-        tick.label.set_fontsize(20)
+    ax.tick_params(axis="both", labelsize=20)
 
     plt.tight_layout()
 

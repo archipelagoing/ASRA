@@ -122,12 +122,13 @@ if __name__ == "__main__":
     ax, fig, legend = plot_2d_pareto(trajectories=all_traj, scale=args.scale)
 
     title_map = {
-        "nashmtl": "Nash-MTL",
-        "cagrad": "CAGrad",
-        "mgda": "MGDA",
-        "pcgrad": "PCGrad",
-        "ls": "LS",
-    }
+    "nashmtl": "Nash-MTL",
+    "replicator_nashmtl": "EvoNashMTL",
+    "cagrad": "CAGrad",
+    "mgda": "MGDA",
+    "pcgrad": "PCGrad",
+    "ls": "LS",
+}
     ax.set_title(title_map[args.method], fontsize=25)
     plt.savefig(
         out_path / f"{args.method}.png",

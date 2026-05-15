@@ -835,6 +835,7 @@ class ReplicatorNashMTL(WeightMethod):
         self.max_norm = max_norm
         self.replicator_lr = replicator_lr
         self.eps = eps
+        self.prev_losses = None
 
         # Nash-MTL state
         self.prvs_alpha_param = None
@@ -894,17 +895,38 @@ class ReplicatorNashMTL(WeightMethod):
 
         return torch.eye(self.n_tasks, dtype=torch.float32, device=self.device)
 
-    def _update_replicator_shares(self, payoff_matrix):
-        p = payoff_matrix @ self.x
-        p_bar = torch.dot(self.x, p)
-        growth = 1.0 + self.replicator_lr * (p - p_bar)
-        growth = torch.clamp(growth, min=self.eps)
+    def _update_replicator_shares(self, losses):
+        minShare = 0.05
+        urgencyEps = 0.1
 
-        x_next = self.x * growth
-        x_next = torch.clamp(x_next, min=self.eps)
+        currentLosses = losses.detach().to(self.device)
+
+        if self.prev_losses is None:
+            self.prev_losses = currentLosses
+            return self.x
+
+        # Module 1: Task Loss Monitor
+        improvement = self.prev_losses - currentLosses
+
+        # Module 2: Evolutionary Scheduler
+        # Smaller improvement -> higher urgency
+        urgency = 1.0 / (urgencyEps + torch.clamp(improvement, min=0.0))
+
+        # Normalize urgency so values are comparable but not explosive
+        urgency = urgency / urgency.mean().clamp_min(self.eps)
+
+        avgUrgency = torch.dot(self.x, urgency).clamp_min(self.eps)
+        x_next = self.x * (urgency / avgUrgency)
+
+        x_next = x_next / x_next.sum().clamp_min(self.eps)
+
+        numTasks = x_next.numel()
+        x_next = (1.0 - numTasks * minShare) * x_next + minShare
         x_next = x_next / x_next.sum().clamp_min(self.eps)
 
         self.x = x_next.detach()
+        self.prev_losses = currentLosses
+
         return self.x
 
     def _stop_criteria(self, gtg, alpha_t):
@@ -993,7 +1015,7 @@ class ReplicatorNashMTL(WeightMethod):
             scheduler_features=scheduler_features,
             payoff_matrix=payoff_matrix,
         )
-        replicator_shares = self._update_replicator_shares(payoff_matrix_t)
+        replicator_shares = self._update_replicator_shares(losses)
 
         if (self.step % self.update_weights_every) == 0:
             self.step += 1
@@ -1024,7 +1046,20 @@ class ReplicatorNashMTL(WeightMethod):
             nash_weights = torch.from_numpy(self.prvs_alpha).to(losses.device)
 
         final_weights = replicator_shares.to(losses.device) * nash_weights
+
+        # Normalize first
         final_weights = final_weights / final_weights.sum().clamp_min(self.eps)
+
+        # Prevent final task weights from collapsing to zero
+        minFinalWeight = 0.05
+        numTasks = final_weights.numel()
+
+        final_weights = (1.0 - numTasks * minFinalWeight) * final_weights + minFinalWeight
+
+        # Safety normalization
+        final_weights = final_weights / final_weights.sum().clamp_min(self.eps)
+
+        # Scale back so weights sum to number of tasks
         final_weights = final_weights * self.n_tasks
 
         weighted_loss = torch.sum(final_weights * losses)
