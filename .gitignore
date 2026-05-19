@@ -6,3 +6,5 @@
 /potentialApplications.txt
 /5_15Daily.txt
 oldASRA/
+nash-mtl-adapt/dataset/
+*.pt
