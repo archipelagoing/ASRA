@@ -2,6 +2,4 @@ title: EvoNashMTL
 description: Research repo for EvoNashMTL
 url: "https://archipelagoing.github.io"
 baseurl: "/EvoNashMTL"
-remote_theme: poole/hyde
-plugins:
-  - jekyll-remote-theme
+theme: jekyll-theme-tactile
