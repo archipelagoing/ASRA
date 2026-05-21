@@ -1,10 +1,25 @@
-/bg/plan.txt
-/bg/Criteria.txt
-/nash-mtl/methods/replicator_nashmtl_pseudocode.md
-/READMEold.md
-/StubImplementationOrdering.md
-/potentialApplications.txt
-/5_15Daily.txt
+.DS_Store
+
+# Jekyll / GitHub Pages local build artifacts
+_site/
+.jekyll-cache/
+.sass-cache/
+.bundle/
+Gemfile.lock
+
+# Python build/test artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+
+# Local environments
+.venv/
+venv/
+env/
+
+# Archived scratch work
 oldASRA/
-nash-mtl-adapt/dataset/
+
+# Large local model/checkpoint artifacts
 *.pt

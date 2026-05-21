@@ -170,6 +170,25 @@ img {
   margin-top: 0;
 }
 
+.card-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.card-link:hover,
+.card-link:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: 0 22px 48px rgba(31, 42, 48, 0.12);
+  border-color: rgba(15, 118, 110, 0.28);
+}
+
+.card-link:focus-visible {
+  outline: 3px solid rgba(15, 118, 110, 0.18);
+  outline-offset: 3px;
+}
+
 .eyebrow,
 .page-kicker {
   margin: 0 0 0.5rem;

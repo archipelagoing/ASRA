@@ -31,21 +31,21 @@ title: Home
 <section class="section">
   <p class="eyebrow">What This Site Covers</p>
   <div class="grid grid--two">
-    <article class="card">
+    <a class="card card-link" href="{{ '/about/' | relative_url }}">
       <h3>About</h3>
       <p>The project framing, research question, and current scope.</p>
-    </article>
-    <article class="card">
+    </a>
+    <a class="card card-link" href="{{ '/results/' | relative_url }}">
       <h3>Results</h3>
       <p>All five toy figures, plus the strongest takeaways from the notes in <code>imgs/</code>.</p>
-    </article>
-    <article class="card">
+    </a>
+    <a class="card card-link" href="{{ '/method/' | relative_url }}">
       <h3>Method</h3>
       <p>The two-level weighting design, tuned toy setup, and why the scheduler modulates Nash instead of replacing it.</p>
-    </article>
-    <article class="card">
+    </a>
+    <a class="card card-link" href="{{ '/repo/' | relative_url }}">
       <h3>Repo</h3>
       <p>Where the code lives, how to run the prototype, and what to inspect during experiments.</p>
-    </article>
+    </a>
   </div>
 </section>
