@@ -245,6 +245,17 @@ img {
   color: var(--muted);
 }
 
+.highlight-question {
+  margin: 1.4rem 0 1.8rem;
+  padding: 1rem 1.1rem;
+  border-left: 5px solid var(--accent-deep);
+  border-radius: 14px;
+  background: rgba(15, 118, 110, 0.08);
+  color: var(--accent-deep);
+  font-size: 1.18rem;
+  font-weight: 700;
+}
+
 @media (max-width: 820px) {
   .site-header__inner {
     flex-direction: column;

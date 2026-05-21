@@ -8,10 +8,12 @@ permalink: /about/
 
 EvoNashMTL is a research repository for multi-task learning centered on one question: can Nash bargaining-based task balancing be improved by adding an evolutionary scheduler that adapts task influence over time?
 
+<p class="highlight-question">Can Nash bargaining-based task balancing be improved by adding an evolutionary scheduler that adapts task influence over time?</p>
+
 The repository treats multi-task optimization as two linked problems:
 
-- short-term fairness: how to combine competing task gradients into one shared update
-- long-term adaptation: how to stop stronger or easier tasks from dominating training over time
+- **short-term fairness:** how to combine competing task gradients into one shared update
+- **long-term adaptation:** how to stop stronger or easier tasks from dominating training over time
 
 Nash-MTL handles the first problem by solving for fair task weights at each step. EvoNashMTL extends that idea with an outer replicator-style scheduler that tracks slower training dynamics and nudges long-run task emphasis.
 
